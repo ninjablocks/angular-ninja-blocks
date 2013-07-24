@@ -1,0 +1,13 @@
+{
+  "name": "angular-ninja-blocks",
+  "version": "0.1.0",
+  "main": "angular-ninja-blocks.js",
+  "ignore": [
+    "**/.*",
+    "node_modules",
+    "components"
+  ],
+  "dependencies": {
+    "angular": "~1.1.5"
+  }
+}
