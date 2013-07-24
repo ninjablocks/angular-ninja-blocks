@@ -3,31 +3,109 @@
  */
 
 
-;function() {
+;(function () {
 
   // Check for visionmedia/debug
-  var ninjaDebug = (debug) ? debug("ninja:angular") : console.log;
+  var ninjaDebug = (typeof debug !== 'undefined') ? debug("ninja:angular") : function() { console.log(arguments); };
 
   // Module name
   var MODULE = "angular-ninja-blocks";
 
+
+  /**
+   * Defined the angular component module
+   */
+  angular.module(MODULE, []);
+
   /**
    * Ninja Events
    */
-  angular.module(MODULE).value('NBEvents', {
+  angular.module(MODULE).value('NBEvents', { });
 
-    // Pusher
+  angular.module(MODULE).service('NBAPI', function() {
 
+    var api = {
 
-  });
+      /**
+       * The Ninja API host
+       * @type {String}
+       */
+      Host:                 'https://api.ninja.is',
+
+      /**
+       * Authentication Modes
+       * @type {Object}
+       */
+      AuthenticationModes: {
+        ACCESS_TOKEN:       'accessToken',
+        USER_ACCESS_TOKEN:  'userAccessToken',
+        SESSION:            'session'
+      },
+
+      /**
+       * The user_access_token
+       * @type {String}
+       */
+      userAccessToken:      '',
+
+      /**
+       * The OAuth 2.0 access token
+       * @type {String}
+       */
+      accessToken:     '',
+
+      /**
+       * Detects the Authentication Mode
+       * @return {[type]} [description]
+       */
+      GetAuthenticationMode: function() {
+
+        if (this.userAccessToken) return this.AuthenticationModes.USER_ACCESS_TOKEN;
+        if (this.oauthAccessToken) return  this.AuthenticationModes.ACCESS_TOKEN;
+        return this.AuthenticationModes.SESSION;
+
+      },
+
+      /**
+       * Gets the auth slug for REST requests
+       * @param  {boolean} append Whether to append the auth slug to existing querystring or create new querystring
+       * @return {string}        Query string of the auth slug
+       */
+      GetAuthSlug: function(append) {
+        
+        var appendChar = (append) ? '&' : '?';
+
+        var mode = this.GetAuthenticationMode();
+
+        switch (mode) {
+          case this.AuthenticationModes.ACCESS_TOKEN:
+            return appendChar + 'access_token=' + this.accessToken;
+            break;
+          case this.AuthenticationModes.USER_ACCESS_TOKEN:
+            return appendChar + 'user_access_token=' + this.userAccessToken;
+            break;
+          case this.AuthenticationModes.SESSION:
+            return '';
+            break;
+          default:
+            return '';
+        }
+
+      }
+
+    };
+
+    return api;
+
+  })
 
   /**
    * Ninja Pusher
    * ------------
    * Pusher Service events
    */
-  angular.module(MODULE).service('NBPusher', ['$rootScope', 'NBEvents'
-    , function($rootScope, NBEvents) {
+  angular.module(MODULE).service('NBPusher', ['$rootScope', 'NBEvents', 'NBAPI'
+    , function($rootScope, NBEvents, NBAPI) {
 
       // Events
       NBEvents.PusherHeartbeat =         'PusherHeartbeat';
@@ -112,12 +190,13 @@
    * Handle Ninja Block User account. 
    * Session is handled by 
    */
-  angular.module(MODULE).service('NBUser', ['$rootScope', '$http', 'NBEvents'
-    , function($rootScope, $http, NBEvents) {
+  angular.module(MODULE).service('NBUser', ['$rootScope', '$http', 'NBEvents', 'NBAPI'
+    , function($rootScope, $http, NBEvents, NBAPI) {
 
       var endpoint = "/rest/v0/user";
 
       NBEvents.UserLoaded =         'Ninja.UserLoaded';
+      NBEvents.UserNotLoaded =      'Ninja.UserNotLoaded';
 
       var ninjaUser = {
 
@@ -130,11 +209,24 @@
          * @return {[type]}            [description]
          */
         Load: function(callback) {
-          $http.get(endpoint).success(function(response) {
-            this.User = response;
-            $rootScope.$broadcast(NBEvents.UserLoaded, this.User);
-            if (callback) callback(response);
-          }.bind(this));
+          $http.get(NBAPI.Host + endpoint + NBAPI.GetAuthSlug()).success(function(response, status) {
+            switch(status) {
+              case 200:
+                this.User = response;
+                $rootScope.$broadcast(NBEvents.UserLoaded, this.User);
+                if (callback) callback(response);
+                break;
+
+              case 401:
+                this.User = {}
+                $rootScope.$broadcast(NBEvents.UserNotLoaded);
+                if (callback) callback(false);
+                break;
+            }
+          }.bind(this)).error(function(response) {
+            $rootScope.$broadcast(NBEvents.UserNotLoaded);
+            if (callback) callback(false);
+          });
         }
 
       };
@@ -147,10 +239,10 @@
    * -----------------
    * Manage a user's blocks
    */
-  angular.module(MODULE).service('NBUserBlocks', ['$rootScope', '$http', 'NBEvents'
-    , function($rootScope, $http, NBEvents) {
+  angular.module(MODULE).service('NBUserBlocks', ['$rootScope', '$http', 'NBEvents', 'NBAPI'
+    , function($rootScope, $http, NBEvents, NBAPI) {
 
-      var endpoint = "/rest/v0/block"
+      var endpoint = "/rest/v0/block";
 
       NBEvents.BlocksLoaded =       'Ninja.BlocksLoaded';
 
@@ -159,7 +251,7 @@
         Blocks: [],
 
         Load: function(callback) {
-          $http.get(endpoint).success(function(response) {
+          $http.get(NBAPI.Host + endpoint + NBAPI.GetAuthSlug()).success(function(response, status) {
             this.Blocks = response.data;
             $rootScope.$broadcast(NBEvents.BlocksLoaded, this.Blocks);
             if (callback) callback(response);
@@ -177,8 +269,8 @@
    * ------------------
    * Load Ninja Block devices for a user account
    */
-  angular.module(MODULE).service('NBUserDevices', ['$rootScope', '$http', 'NBEvents'
-    , function($rootScope, $http, NBEvents) {
+  angular.module(MODULE).service('NBUserDevices', ['$rootScope', '$http', 'NBEvents', 'NBAPI'
+    , function($rootScope, $http, NBEvents, NBAPI) {
 
       // Endpoint
       var endpoint = "/rest/v0/device";
@@ -200,7 +292,7 @@
          * @return {[type]}            [description]
          */
         Load: function(callback) {
-          $http.get(endpoint).success(function(response) {
+          $http.get(NBAPI.Host + endpoint + NBAPI.GetAuthSlug()).success(function(response, status) {
             this.Devices = response.data;
             $rootScope.$broadcast(NBEvents.DevicesLoaded, this.Devices);
             if (callback) callback(response);
@@ -213,7 +305,7 @@
          * @param  {Function} callback Callback function with the loaded device
          */
         LoadDevice: function(guid, callback) {
-          $http.get(endpoint + "/" + guid).success(function(response) {
+          $http.get(NBAPI.Host + endpoint + "/" + guid + NBAPI.GetAuthSlug()).success(function(response, status) {
             if (response.result) {
               var device = response.data;
               if (callback) {
@@ -260,7 +352,7 @@
     }]);
 
 
-}();
+})(undefined);
 
 
 
