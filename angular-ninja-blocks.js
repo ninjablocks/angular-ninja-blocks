@@ -20,7 +20,24 @@
   /**
    * Ninja Events
    */
-  angular.module(MODULE).value('NBEvents', { });
+  angular.module(MODULE).value('NBEvents', {
+
+      PusherHeartbeat:          'PusherHeartbeat',
+      PusherData:               'PusherData',
+      PusherConfig:             'PusherConfig',
+      PusherStream:             'PusherStream',
+
+      UserLoaded:               'Ninja.UserLoaded',
+      UserNotLoaded:            'Ninja.UserNotLoaded',
+
+      BlocksLoaded:             'Ninja.BlocksLoaded',
+
+      DevicesLoaded:            'Ninja.DevicesLoaded',
+      DeviceAdded:              'Ninja.DeviceAdded',
+      DeviceLoaded:             'Ninja.DeviceLoaded',
+      DeviceNotLoaded:          'Ninja.DeviceNotLoaded'
+
+  });
 
   angular.module(MODULE).service('NBAPI', function() {
 
@@ -108,10 +125,7 @@
     , function($rootScope, NBEvents, NBAPI) {
 
       // Events
-      NBEvents.PusherHeartbeat =         'PusherHeartbeat';
-      NBEvents.PusherData =              'PusherData';
-      NBEvents.PusherConfig =            'PusherConfig';
-      NBEvents.PusherStream =            'PusherStream';
+
 
       // Service Object
       var pusher = {
@@ -195,8 +209,6 @@
 
       var endpoint = "/rest/v0/user";
 
-      NBEvents.UserLoaded =         'Ninja.UserLoaded';
-      NBEvents.UserNotLoaded =      'Ninja.UserNotLoaded';
 
       var ninjaUser = {
 
@@ -244,7 +256,6 @@
 
       var endpoint = "/rest/v0/block";
 
-      NBEvents.BlocksLoaded =       'Ninja.BlocksLoaded';
 
       var blocks = {
 
@@ -275,16 +286,11 @@
       // Endpoint
       var endpoint = "/rest/v0/device";
 
-      // Events
-      NBEvents.DevicesLoaded =      'Ninja.DevicesLoaded';
-      NBEvents.DeviceAdded =        'Ninja.DeviceAdded';
-      NBEvents.DeviceLoaded =       'Ninja.DeviceLoaded';
-      NBEvents.DeviceNotLoaded =    'Ninja.DeviceNotLoaded';
 
       // Service Object
       var devices = {
 
-        Devices: [],
+        Devices: {},
 
         /**
          * Load a user's devices
